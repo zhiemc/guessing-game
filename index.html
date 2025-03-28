@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜数字游戏</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #000;
+        }
+        
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #86868b;
+            margin-bottom: 20px;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background-color: #0077f0;
+            transform: scale(1.02);
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-secondary {
+            background-color: #f5f5f7;
+            color: #000;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #e6e6e9;
+        }
+        
+        /* 难度选择按钮 */
+        .difficulty-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 30px 0;
+        }
+        
+        /* 输入框样式 */
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+        }
+        
+        /* 结果和提示样式 */
+        #result {
+            font-size: 18px;
+            margin: 20px 0;
+            min-height: 40px;
+            transition: all 0.3s ease;
+        }
+        
+        .success {
+            color: #35c75e;
+        }
+        
+        .error {
+            color: #ff3b30;
+        }
+        
+        .hint {
+            color: #0071e3;
+        }
+        
+        /* 范围提示样式 */
+        #range {
+            font-size: 16px;
+            margin: 20px 0;
+            color: #86868b;
+        }
+        
+        /* 剩余次数提示 */
+        #attempts-left {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 20px;
+        }
+        
+        /* 页面切换动画 */
+        .fade-in {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        .fade-out {
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        /* 游戏结束屏幕 */
+        #end-message {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="setup-screen">
+        <h1>猜数字游戏</h1>
+        <p>选择一个难度级别开始游戏：</p>
+        
+        <div class="difficulty-buttons">
+            <button id="easy" class="btn">简单 (10次机会)</button>
+            <button id="medium" class="btn">普通 (7次机会)</button>
+            <button id="hard" class="btn">困难 (5次机会)</button>
+        </div>
+        
+        <p>系统会生成一个1到100之间的数字，你能猜到吗？</p>
+    </div>
+    
+    <div class="container" id="game-screen" style="display: none;">
+        <h1>猜数字游戏</h1>
+        <p>我心中有一个1到100之间的数字，你能猜到吗？</p>
+        
+        <div id="attempts-left">剩余猜测次数: <span id="attempts-count">0</span></div>
+        
+        <input type="number" id="guessInput" min="1" max="100" placeholder="输入1-100之间的数字">
+        
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+            <button id="guessButton" class="btn">猜一猜</button>
+            <button id="restart-btn" class="btn btn-secondary">重新开始</button>
+        </div>
+        
+        <div id="result"></div>
+        
+        <div id="range">
+            <p>当前范围: <span id="currentRange">1-100</span></p>
+        </div>
+    </div>
+    
+    <div class="container" id="end-screen" style="display: none;">
+        <h1>猜数字游戏</h1>
+        <div id="end-message"></div>
+        <button id="play-again-btn" class="btn">再玩一次</button>
+    </div>
+
+    <script>
+        let randomNumber;
+        let attempts;
+        let maxAttempts;
+        let currentAttempts;
+        let minRange = 1;
+        let maxRange = 100;
+        let gameStarted = false;
+        
+        // 页面切换动画
+        function fadeIn(element) {
+            element.style.opacity = "0";
+            element.style.transform = "translateY(-20px)";
+            setTimeout(() => {
+                element.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+                element.style.opacity = "1";
+                element.style.transform = "translateY(0)";
+            }, 10);
+        }
+        
+        function fadeOut(element) {
+            element.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+            element.style.opacity = "0";
+            element.style.transform = "translateY(-20px)";
+            setTimeout(() => {
+                element.style.display = "none";
+            }, 500);
+        }
+        
+        // 难度选择
+        document.getElementById('easy').addEventListener('click', function() {
+            startGame(10);
+        });
+        
+        document.getElementById('medium').addEventListener('click', function() {
+            startGame(7);
+        });
+        
+        document.getElementById('hard').addEventListener('click', function() {
+            startGame(5);
+        });
+        
+        // 开始游戏
+        function startGame(attemptsAllowed) {
+            maxAttempts = attemptsAllowed;
+            currentAttempts = attemptsAllowed;
+            attempts = 0;
+            minRange = 1;
+            maxRange = 100;
+            randomNumber = Math.floor(Math.random() * 100) + 1;
+            
+            fadeOut(document.getElementById('setup-screen'));
+            
+            setTimeout(() => {
+                document.getElementById('game-screen').style.display = 'block';
+                fadeIn(document.getElementById('game-screen'));
+            }, 500);
+            
+            document.getElementById('currentRange').textContent = `${minRange}-${maxRange}`;
+            document.getElementById('attempts-count').textContent = currentAttempts;
+            document.getElementById('result').textContent = '';
+            document.getElementById('guessInput').value = '';
+            document.getElementById('guessInput').disabled = false;
+            document.getElementById('guessButton').disabled = false;
+            
+            gameStarted = true;
+        }
+        
+        // 猜测按钮
+        document.getElementById('guessButton').addEventListener('click', function() {
+            if (!gameStarted) return;
+            
+            const userGuess = document.getElementById('guessInput').value;
+            const resultElement = document.getElementById('result');
+            
+            // 检查输入是否有效
+            if (userGuess === '') {
+                resultElement.textContent = '请输入一个数字！';
+                resultElement.className = 'error';
+                return;
+            }
+            
+            const guess = parseInt(userGuess);
+            
+            if (isNaN(guess) || guess < 1 || guess > 100) {
+                resultElement.textContent = '请输入1-100之间的有效数字！';
+                resultElement.className = 'error';
+                return;
+            }
+            
+            attempts++;
+            currentAttempts--;
+            
+            // 更新剩余猜测次数
+            document.getElementById('attempts-count').textContent = currentAttempts;
+            
+            // 清空输入框
+            document.getElementById('guessInput').value = '';
+            
+            // 检查猜测结果
+            if (guess === randomNumber) {
+                resultElement.textContent = `恭喜你！猜对了！答案就是 ${randomNumber}，你总共猜了 ${attempts} 次。`;
+                resultElement.className = 'success';
+                // 禁用输入和按钮
+                document.getElementById('guessInput').disabled = true;
+                document.getElementById('guessButton').disabled = true;
+                
+                // 显示游戏结束屏幕
+                setTimeout(() => {
+                    fadeOut(document.getElementById('game-screen'));
+                    
+                    setTimeout(() => {
+                        document.getElementById('end-screen').style.display = 'block';
+                        fadeIn(document.getElementById('end-screen'));
+                        document.getElementById('end-message').innerHTML = `
+                            <div class="success">
+                                <h3>恭喜你赢了！</h3>
+                                <p>答案是 ${randomNumber}，你用了 ${attempts} 次猜测。</p>
+                            </div>
+                        `;
+                    }, 500);
+                }, 1000);
+            } else if (guess < randomNumber) {
+                // 如果猜的数字小于目标，更新最小范围
+                minRange = Math.max(minRange, guess + 1);
+                resultElement.textContent = '太低了！再试一次。';
+                resultElement.className = 'hint';
+            } else {
+                // 如果猜的数字大于目标，更新最大范围
+                maxRange = Math.min(maxRange, guess - 1);
+                resultElement.textContent = '太高了！再试一次。';
+                resultElement.className = 'hint';
+            }
+            
+            // 更新范围显示
+            document.getElementById('currentRange').textContent = `${minRange}-${maxRange}`;
+            
+            // 检查是否用完猜测次数
+            if (currentAttempts <= 0 && guess !== randomNumber) {
+                resultElement.textContent = `很遗憾！你用完了所有猜测次数。正确答案是 ${randomNumber}。`;
+                resultElement.className = 'error';
+                // 禁用输入和按钮
+                document.getElementById('guessInput').disabled = true;
+                document.getElementById('guessButton').disabled = true;
+                
+                // 显示游戏结束屏幕
+                setTimeout(() => {
+                    fadeOut(document.getElementById('game-screen'));
+                    
+                    setTimeout(() => {
+                        document.getElementById('end-screen').style.display = 'block';
+                        fadeIn(document.getElementById('end-screen'));
+                        document.getElementById('end-message').innerHTML = `
+                            <div class="error">
+                                <h3>游戏结束！</h3>
+                                <p>很遗憾，你没有猜对。正确答案是 ${randomNumber}。</p>
+                            </div>
+                        `;
+                    }, 500);
+                }, 1000);
+            }
+        });
+        
+        // 重新开始按钮
+        document.getElementById('restart-btn').addEventListener('click', function() {
+            fadeOut(document.getElementById('game-screen'));
+            
+            setTimeout(() => {
+                document.getElementById('setup-screen').style.display = 'block';
+                fadeIn(document.getElementById('setup-screen'));
+            }, 500);
+        });
+        
+        // 再玩一次按钮
+        document.getElementById('play-again-btn').addEventListener('click', function() {
+            fadeOut(document.getElementById('end-screen'));
+            
+            setTimeout(() => {
+                document.getElementById('setup-screen').style.display = 'block';
+                fadeIn(document.getElementById('setup-screen'));
+            }, 500);
+        });
+    </script>
+</body>
+</html>
